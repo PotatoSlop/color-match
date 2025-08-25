@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3 uid="uid://bv0ujhspe3n0o"]
+
+[ext_resource type="Script" uid="uid://cc3jesg0g3kag" path="res://scenes/card.gd" id="1_d81rb"]
+
+[node name="Card" type="PanelContainer"]
+offset_right = 168.0
+offset_bottom = 240.0
+script = ExtResource("1_d81rb")
+
+[node name="CardColorDisplay" type="ColorRect" parent="."]
+layout_mode = 2
+
+[node name="HexLabel" type="Label" parent="."]
+layout_mode = 2
+
+[node name="SaturationValueLabel" type="Label" parent="."]
+layout_mode = 2
+
+[node name="SaturationBar" type="TextureProgressBar" parent="."]
+layout_mode = 2
