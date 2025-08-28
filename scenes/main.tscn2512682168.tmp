@@ -1,0 +1,53 @@
+[gd_scene load_steps=8 format=3 uid="uid://ch5pepj2fbg8g"]
+
+[ext_resource type="Script" uid="uid://cc2cbognvhd2w" path="res://scripts/card.gd" id="1_jyhfs"]
+[ext_resource type="PackedScene" uid="uid://do65kmnvxnqkq" path="res://scenes/card_texture.tscn" id="2_sugp2"]
+[ext_resource type="PackedScene" uid="uid://c8qhtowfr7upm" path="res://scenes/card.tscn" id="3_tbgi4"]
+[ext_resource type="Script" uid="uid://bba6mc2xvhlb2" path="res://scenes/player_hand.gd" id="4_tefeu"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_o6xl0"]
+viewport_path = NodePath("SubViewport")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(1138, 359)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_tipki"]
+viewport_path = NodePath("SubViewport")
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_jyhfs")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = -128
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+z_index = -4096
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.217032, 0.222548, 0.224073, 1)
+
+[node name="CardRenderTarget" parent="." instance=ExtResource("2_sugp2")]
+
+[node name="Sprite2D" parent="." instance=ExtResource("3_tbgi4")]
+position = Vector2(398, 361)
+texture = SubResource("ViewportTexture_o6xl0")
+
+[node name="PlayerHand" type="Node2D" parent="."]
+script = ExtResource("4_tefeu")
+
+[node name="Area2D" type="Area2D" parent="PlayerHand"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerHand/Area2D"]
+position = Vector2(918, 873)
+shape = SubResource("RectangleShape2D_jyhfs")
+
+[node name="Sprite2D2" parent="." instance=ExtResource("3_tbgi4")]
+position = Vector2(1086, 261)
+texture = SubResource("ViewportTexture_tipki")
+
+[editable path="CardRenderTarget"]

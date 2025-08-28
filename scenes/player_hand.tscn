@@ -1,5 +1,30 @@
-[gd_scene format=3 uid="uid://d0ilgstayrrjy"]
+[gd_scene load_steps=3 format=3 uid="uid://fl0l7amlwhxk"]
 
-[node name="playerHand" type="HBoxContainer"]
-offset_right = 40.0
-offset_bottom = 40.0
+[ext_resource type="Script" uid="uid://dgfe2gy3ep7rh" path="res://scripts/playerHand.gd" id="1_6aw8k"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(1000, 400)
+
+[node name="PlayerHand" type="Control"]
+z_index = -10
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -500.0
+offset_top = -400.0
+offset_right = 500.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("1_6aw8k")
+
+[node name="Area2D" type="Area2D" parent="."]
+z_index = -10
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+z_index = -10
+position = Vector2(500, 200)
+shape = SubResource("RectangleShape2D_jyhfs")

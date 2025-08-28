@@ -1,0 +1,188 @@
+[gd_scene load_steps=7 format=3 uid="uid://ch5pepj2fbg8g"]
+
+[ext_resource type="Script" uid="uid://bobl3d1kesig0" path="res://scripts/main.gd" id="1_sugp2"]
+[ext_resource type="PackedScene" uid="uid://do65kmnvxnqkq" path="res://scenes/card_texture.tscn" id="2_sugp2"]
+[ext_resource type="PackedScene" uid="uid://diiakt80lyu4h" path="res://scenes/card.tscn" id="4_jyhfs"]
+
+[sub_resource type="GDScript" id="GDScript_sugp2"]
+script/source = "extends Node2D
+
+# Preload the card scene and render target scene
+const CardScene = preload(\"res://scenes/card.tscn\")
+const CardRenderScene = preload(\"res://scenes/card_texture.tscn\")
+
+# Signal emitted when a card is created
+signal card_created(card)
+
+# Array to track all cards in hand
+var cards_in_hand: Array = []
+
+# Hand area properties
+var hand_area_rect: Rect2
+var hand_y_position: float = 600  # Adjust this to position cards vertically
+
+func _ready():
+	# Set up the hand area based on viewport size
+	var viewport_size = get_viewport().size
+	hand_area_rect = Rect2(
+		50,  # Left margin
+		hand_y_position - 100,  # Top of hand area
+		viewport_size.x - 100,  # Width (with margins)
+		300  # Height of hand area
+	)
+	
+	# Remove or hide the debug collision shape since we don't need it for card containment
+	if has_node(\"Area2D\"):
+		$Area2D.queue_free()
+
+func deal_initial_hand(card_count: int = 5):
+	# Clear any existing cards
+	for card in cards_in_hand:
+		card.queue_free()
+	cards_in_hand.clear()
+	
+	# Create the specified number of cards
+	for i in range(card_count):
+		_create_card(i, card_count)
+	
+	# Arrange cards in hand
+	_arrange_cards()
+
+func _create_card(index: int, total_cards: int):
+	# Create a new render target for this card
+	var card_render = CardRenderScene.instantiate()
+	get_parent().add_child(card_render)
+	
+	# Wait a frame for the viewport to be ready
+	await get_tree().process_frame
+	
+	# Create the card sprite
+	var new_card = CardScene.instantiate()
+	
+	# Create and assign the viewport texture
+	var viewport_texture = ViewportTexture.new()
+	viewport_texture.viewport_path = card_render.get_node(\"SubViewport\").get_path()
+	new_card.texture = viewport_texture
+	
+	# Store reference to render target in card
+	new_card.set_meta(\"render_target\", card_render)
+	
+	# Generate a unique color for this card
+	var color_card = card_render.get_node(\"SubViewport/ColorCard\")
+	if color_card and color_card.has_method(\"generate_random_color\"):
+		color_card.generate_random_color()
+	
+	# Add card to scene
+	add_child(new_card)
+	cards_in_hand.append(new_card)
+	
+	# Emit signal for main to connect interactions
+	card_created.emit(new_card)
+
+func _arrange_cards():
+	if cards_in_hand.is_empty():
+		return
+	
+	var viewport_width = get_viewport().size.x
+	var card_count = cards_in_hand.size()
+	
+	# Calculate spacing and positioning
+	var total_width = 0
+	var card_width = 250 * 0.75  # Base width * scale
+	var max_spacing = 200
+	var min_spacing = 100
+	
+	# Calculate dynamic spacing based on number of cards
+	var spacing = min(max_spacing, max(min_spacing, (viewport_width - 200 - card_width) / max(1, card_count - 1)))
+	
+	if card_count == 1:
+		total_width = card_width
+	else:
+		total_width = card_width + spacing * (card_count - 1)
+	
+	# Center the hand horizontally
+	var start_x = (viewport_width - total_width) / 2 + card_width / 2
+	
+	# Position each card with a slight rotation for fan effect
+	for i in range(card_count):
+		var card = cards_in_hand[i]
+		
+		# Calculate position
+		var target_x = start_x + i * spacing
+		var target_y = hand_y_position
+		
+		# Add a slight arc to the hand (cards higher in the middle)
+		var center_offset = abs(i - (card_count - 1) / 2.0)
+		target_y += center_offset * 10  # Slight vertical offset
+		
+		# Apply rotation for fan effect
+		var rotation_range = 0.15  # radians
+		var rotation_step = rotation_range / max(1, card_count - 1)
+		card.rotation = -rotation_range / 2 + rotation_step * i
+		
+		# Set position
+		card.position = Vector2(target_x, target_y)
+		
+		# Set z-index based on position (leftmost cards behind)
+		card.z_index = 10 + i
+
+func is_card_in_hand_area(card: Node2D) -> bool:
+	return hand_area_rect.has_point(card.global_position)
+
+func snap_card_to_hand(card: Node2D):
+	# Find the card's index and rearrange
+	var index = cards_in_hand.find(card)
+	if index >= 0:
+		_arrange_cards()
+
+func remove_card_from_hand(card: Node2D):
+	var index = cards_in_hand.find(card)
+	if index >= 0:
+		cards_in_hand.erase(card)
+		_arrange_cards()
+
+func add_card_to_hand(card: Node2D):
+	if not card in cards_in_hand:
+		cards_in_hand.append(card)
+		_arrange_cards()
+"
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(1138, 359)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_sugp2"]
+viewport_path = NodePath("SubViewport")
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_sugp2")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = -128
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+z_index = -4096
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.217032, 0.222548, 0.224073, 1)
+
+[node name="CardRenderTarget" parent="." instance=ExtResource("2_sugp2")]
+
+[node name="PlayerHand" type="Node2D" parent="."]
+script = SubResource("GDScript_sugp2")
+
+[node name="Area2D" type="Area2D" parent="PlayerHand"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerHand/Area2D"]
+position = Vector2(918, 873)
+shape = SubResource("RectangleShape2D_jyhfs")
+
+[node name="Card" parent="." instance=ExtResource("4_jyhfs")]
+position = Vector2(402, 381)
+texture = SubResource("ViewportTexture_sugp2")
+
+[editable path="CardRenderTarget"]

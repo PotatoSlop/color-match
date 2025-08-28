@@ -1,0 +1,55 @@
+[gd_scene load_steps=5 format=3 uid="uid://ch5pepj2fbg8g"]
+
+[ext_resource type="Script" uid="uid://bobl3d1kesig0" path="res://scripts/main.gd" id="1_sugp2"]
+[ext_resource type="PackedScene" uid="uid://fl0l7amlwhxk" path="res://scenes/player_hand.tscn" id="3_sugp2"]
+[ext_resource type="PackedScene" uid="uid://diiakt80lyu4h" path="res://scenes/card.tscn" id="4_jyhfs"]
+[ext_resource type="FontFile" uid="uid://2d40dk11xaxy" path="res://fonts/04B_03_.TTF" id="4_tbgi4"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_sugp2")
+card_scene = ExtResource("4_jyhfs")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = -128
+
+[node name="PlayerHand" parent="CanvasLayer" instance=ExtResource("3_sugp2")]
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+offset_left = 132.0
+offset_top = 307.0
+offset_right = 340.0
+offset_bottom = 529.0
+text = "Draw Card"
+
+[node name="HandCounterLabel" type="Label" parent="CanvasLayer"]
+z_index = 100
+texture_filter = 2
+texture_repeat = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -57.0
+offset_top = -83.0
+offset_right = 58.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("4_tbgi4")
+theme_override_font_sizes/font_size = 40
+text = "Count
+"
+horizontal_alignment = 1
+vertical_alignment = 2
+max_lines_visible = 1
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+z_index = -4096
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.169272, 0.173872, 0.175143, 1)

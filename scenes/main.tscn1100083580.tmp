@@ -1,0 +1,44 @@
+[gd_scene load_steps=6 format=3 uid="uid://ch5pepj2fbg8g"]
+
+[ext_resource type="Script" uid="uid://bobl3d1kesig0" path="res://scripts/main.gd" id="1_sugp2"]
+[ext_resource type="PackedScene" uid="uid://do65kmnvxnqkq" path="res://scenes/card_texture.tscn" id="2_sugp2"]
+[ext_resource type="PackedScene" uid="uid://diiakt80lyu4h" path="res://scenes/card.tscn" id="4_jyhfs"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jyhfs"]
+size = Vector2(1138, 359)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_sugp2"]
+viewport_path = NodePath("SubViewport")
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_sugp2")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = -128
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+z_index = -4096
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.217032, 0.222548, 0.224073, 1)
+
+[node name="CardRenderTarget" parent="." instance=ExtResource("2_sugp2")]
+
+[node name="PlayerHand" type="Node2D" parent="."]
+
+[node name="Area2D" type="Area2D" parent="PlayerHand"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerHand/Area2D"]
+position = Vector2(918, 873)
+shape = SubResource("RectangleShape2D_jyhfs")
+
+[node name="Card" parent="." instance=ExtResource("4_jyhfs")]
+position = Vector2(836, 434)
+texture = SubResource("ViewportTexture_sugp2")
+
+[editable path="CardRenderTarget"]
