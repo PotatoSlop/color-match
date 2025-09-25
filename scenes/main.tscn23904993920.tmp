@@ -1,0 +1,73 @@
+[gd_scene load_steps=7 format=3 uid="uid://ch5pepj2fbg8g"]
+
+[ext_resource type="Script" uid="uid://bobl3d1kesig0" path="res://scripts/main.gd" id="1_sugp2"]
+[ext_resource type="PackedScene" uid="uid://fl0l7amlwhxk" path="res://scenes/player_hand.tscn" id="3_sugp2"]
+[ext_resource type="PackedScene" uid="uid://diiakt80lyu4h" path="res://scenes/card.tscn" id="4_jyhfs"]
+[ext_resource type="FontFile" uid="uid://2d40dk11xaxy" path="res://fonts/04B_03_.TTF" id="4_tbgi4"]
+[ext_resource type="PackedScene" uid="uid://bi4rdg4ly3ayp" path="res://scenes/deck.tscn" id="5_tbgi4"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_tefeu"]
+viewport_path = NodePath("CanvasLayer/Button/SubViewport")
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_sugp2")
+card_scene = ExtResource("4_jyhfs")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+layer = -128
+
+[node name="PlayerHand" parent="CanvasLayer" instance=ExtResource("3_sugp2")]
+
+[node name="Button" type="Button" parent="CanvasLayer"]
+texture_filter = 1
+texture_repeat = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -184.0
+offset_right = 268.0
+offset_bottom = 184.0
+grow_vertical = 2
+scale = Vector2(0.65, 0.65)
+pivot_offset = Vector2(125, 184)
+action_mode = 0
+icon = SubResource("ViewportTexture_tefeu")
+icon_alignment = 1
+
+[node name="SubViewport" type="SubViewport" parent="CanvasLayer/Button"]
+transparent_bg = true
+size = Vector2i(260, 360)
+
+[node name="DeckCard" parent="CanvasLayer/Button/SubViewport" instance=ExtResource("5_tbgi4")]
+
+[node name="HandCounterLabel" type="Label" parent="CanvasLayer"]
+z_index = 100
+texture_filter = 2
+texture_repeat = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -57.0
+offset_top = -83.0
+offset_right = 58.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_fonts/font = ExtResource("4_tbgi4")
+theme_override_font_sizes/font_size = 20
+text = "Count
+"
+horizontal_alignment = 1
+vertical_alignment = 2
+max_lines_visible = 1
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+z_index = -4096
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0904824, 0.0904823, 0.0904823, 1)

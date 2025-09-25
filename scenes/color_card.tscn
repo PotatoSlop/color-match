@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://bdprl8iq4cmd4"]
+[gd_scene load_steps=6 format=3 uid="uid://bdprl8iq4cmd4"]
 
 [ext_resource type="Script" uid="uid://cc2cbognvhd2w" path="res://scripts/card.gd" id="1_7bu0x"]
 [ext_resource type="FontFile" uid="uid://2d40dk11xaxy" path="res://fonts/04B_03_.TTF" id="1_jy01y"]
@@ -22,6 +22,17 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7bu0x"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+expand_margin_left = 3.0
+expand_margin_top = 3.0
+expand_margin_right = 3.0
+expand_margin_bottom = 3.0
+
 [node name="ColorCard" type="PanelContainer"]
 offset_right = 250.0
 offset_bottom = 350.0
@@ -42,7 +53,7 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_jy01y")
 [node name="HexLabelContainer" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_bottom = 30
+theme_override_constants/margin_bottom = 0
 
 [node name="HexLabel" type="Label" parent="MarginContainer/VBoxContainer/HexLabelContainer"]
 texture_filter = 1
@@ -53,16 +64,25 @@ text = "#FFFFFF"
 
 [node name="ColorLabel" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
+theme_override_constants/margin_top = 5
 theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_bottom = 5
 
 [node name="ColorLabel" type="Label" parent="MarginContainer/VBoxContainer/ColorLabel"]
 texture_filter = 1
 texture_repeat = 1
+custom_minimum_size = Vector2(20, 20)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("1_jy01y")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 text = "Color - Match"
 horizontal_alignment = 1
+vertical_alignment = 2
+autowrap_mode = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+z_index = -20
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_7bu0x")

@@ -1,55 +1,200 @@
-[gd_scene load_steps=5 format=3 uid="uid://ch5pepj2fbg8g"]
+[gd_scene load_steps=14 format=3 uid="uid://ch5pepj2fbg8g"]
 
 [ext_resource type="Script" uid="uid://bobl3d1kesig0" path="res://scripts/main.gd" id="1_sugp2"]
 [ext_resource type="PackedScene" uid="uid://fl0l7amlwhxk" path="res://scenes/player_hand.tscn" id="3_sugp2"]
+[ext_resource type="PackedScene" uid="uid://bw7qo4cju4g8c" path="res://scenes/fuse_particle.tscn" id="3_tefeu"]
+[ext_resource type="PackedScene" uid="uid://by0ctvblmo7ot" path="res://scenes/discard_particle.tscn" id="4_85g3d"]
 [ext_resource type="PackedScene" uid="uid://diiakt80lyu4h" path="res://scenes/card.tscn" id="4_jyhfs"]
+[ext_resource type="PackedScene" uid="uid://imp7q22b4mbu" path="res://scenes/slot_texture.tscn" id="4_o6xl0"]
 [ext_resource type="FontFile" uid="uid://2d40dk11xaxy" path="res://fonts/04B_03_.TTF" id="4_tbgi4"]
+[ext_resource type="Script" uid="uid://svvyna2liyof" path="res://scenes/discardParticle.gd" id="5_choun"]
+[ext_resource type="PackedScene" uid="uid://bi4rdg4ly3ayp" path="res://scenes/deck.tscn" id="5_tbgi4"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_o6xl0"]
+size = Vector2(255.385, 356.923)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_tefeu"]
+viewport_path = NodePath("CanvasLayer/Deck/SubViewport")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o6xl0"]
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tefeu"]
+bg_color = Color(0.886275, 0.235294, 0.054902, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="Main" type="Node2D"]
+position = Vector2(2, 0)
 script = ExtResource("1_sugp2")
 card_scene = ExtResource("4_jyhfs")
+
+[node name="Fuse_Particle" parent="." instance=ExtResource("3_tefeu")]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 layer = -128
 
-[node name="PlayerHand" parent="CanvasLayer" instance=ExtResource("3_sugp2")]
+[node name="Discard" parent="CanvasLayer" instance=ExtResource("4_o6xl0")]
+anchors_preset = 6
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -250.0
+offset_right = 0.0
+grow_horizontal = 0
+scale = Vector2(0.65, 0.65)
 
-[node name="Button" type="Button" parent="CanvasLayer"]
-offset_left = 132.0
-offset_top = 307.0
-offset_right = 340.0
-offset_bottom = 529.0
-text = "Draw Card"
+[node name="Area2D" type="Area2D" parent="CanvasLayer/Discard"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CanvasLayer/Discard/Area2D"]
+z_index = 100
+position = Vector2(125, 175)
+shape = SubResource("RectangleShape2D_o6xl0")
+
+[node name="Destroy_Particle" parent="CanvasLayer/Discard" instance=ExtResource("4_85g3d")]
+position = Vector2(-1451.92, -323.462)
+scale = Vector2(1.53846, 1.53846)
+script = ExtResource("5_choun")
+
+[node name="PlayerHand" parent="CanvasLayer" instance=ExtResource("3_sugp2")]
+card_scene = ExtResource("4_jyhfs")
+deck_button_path = NodePath("../Deck")
+
+[node name="Deck" type="Button" parent="CanvasLayer"]
+texture_filter = 1
+texture_repeat = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -184.0
+offset_right = 268.0
+offset_bottom = 184.0
+grow_vertical = 2
+scale = Vector2(0.65, 0.65)
+pivot_offset = Vector2(125, 184)
+action_mode = 0
+icon = SubResource("ViewportTexture_tefeu")
+icon_alignment = 1
+
+[node name="SubViewport" type="SubViewport" parent="CanvasLayer/Deck"]
+transparent_bg = true
+size = Vector2i(260, 360)
+
+[node name="DeckCard" parent="CanvasLayer/Deck/SubViewport" instance=ExtResource("5_tbgi4")]
 
 [node name="HandCounterLabel" type="Label" parent="CanvasLayer"]
 z_index = 100
-texture_filter = 2
+texture_filter = 1
 texture_repeat = 1
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -57.0
-offset_top = -83.0
-offset_right = 58.0
+offset_left = -57.5
+offset_top = -98.0
+offset_right = 57.5
+offset_bottom = -15.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_fonts/font = ExtResource("4_tbgi4")
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 20
 text = "Count
 "
 horizontal_alignment = 1
 vertical_alignment = 2
 max_lines_visible = 1
 
-[node name="ColorRect" type="ColorRect" parent="CanvasLayer"]
+[node name="ChromaCounter" type="Label" parent="CanvasLayer"]
+texture_filter = 1
+texture_repeat = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -152.0
+offset_top = 248.0
+offset_right = -93.0
+offset_bottom = 276.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_fonts/font = ExtResource("4_tbgi4")
+theme_override_font_sizes/font_size = 20
+text = "●●● 3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EndTurnBtn" type="Button" parent="CanvasLayer"]
+z_index = 10
+texture_filter = 1
+texture_repeat = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -186.0
+offset_top = 206.0
+offset_right = -62.0
+offset_bottom = 244.0
+grow_horizontal = 0
+grow_vertical = 2
+text = "End Turn
+"
+
+[node name="PanelContainer" type="PanelContainer" parent="CanvasLayer/EndTurnBtn"]
+z_index = 1
+texture_filter = 1
+texture_repeat = 1
+layout_mode = 0
+offset_right = 124.0
+offset_bottom = 38.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_o6xl0")
+
+[node name="Label" type="Label" parent="CanvasLayer/EndTurnBtn/PanelContainer"]
+texture_filter = 1
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_tbgi4")
+text = "End Turn"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Background" type="ColorRect" parent="CanvasLayer"]
 z_index = -4096
-custom_minimum_size = Vector2(100, 100)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.169272, 0.173872, 0.175143, 1)
+color = Color(0.0904824, 0.0904823, 0.0904823, 1)
+
+[node name="HealthSwatch" type="PanelContainer" parent="CanvasLayer"]
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 52.0
+offset_top = -268.0
+offset_right = 320.0
+grow_vertical = 0
+scale = Vector2(0.65, 0.65)
+theme_override_styles/panel = SubResource("StyleBoxFlat_tefeu")
+
+[node name="Label" type="Label" parent="CanvasLayer/HealthSwatch"]
+texture_filter = 1
+texture_repeat = 1
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_tbgi4")
+theme_override_font_sizes/font_size = 30
+text = "#e23c0e"
+vertical_alignment = 1
+
+[connection signal="card_discarded" from="CanvasLayer/PlayerHand" to="CanvasLayer/Discard/Destroy_Particle" method="_on_player_hand_card_discarded"]
+[connection signal="card_fused" from="CanvasLayer/PlayerHand" to="Fuse_Particle" method="_on_card_fused"]

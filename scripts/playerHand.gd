@@ -2,23 +2,202 @@ extends Control
 
 @export var max_hand_size: int = 5
 @export var card_spacing: float = 200.0
-@export var hand_width: float = 600.0
+@export var card_scene: PackedScene
+@export var deck_button_path: NodePath
 
-var hand_cards: Array = []
+@onready var end_turn_button = $"../EndTurnBtn"
+@onready var chroma_count_text = $"../ChromaCounter"
+
+signal card_fused(fusion_position: Vector2)
+signal card_discarded(discard_position: Vector2)
+
+# --- State Variables ---
+var chroma_count: int = 3;
+var hand_cards: Array[Node] = []
 var slot_positions: Array[Vector2] = []
+var is_animating: bool = false
+var dragged_card: Node = null
+var hover_target_card: Node = null
+
+# --- Animation Settings ---
+const SLIDE_DURATION: float = 0.35
+const SLIDE_EASE: Tween.EaseType = Tween.EASE_OUT
+const SLIDE_TRANS: Tween.TransitionType = Tween.TRANS_BACK
 
 func _ready() -> void:
-	slot_positions.clear()
-	calculate_slot_positions()
+	_recalculate_slot_positions()
+	end_turn_button.pressed.connect(reset_chroma_counter)
+	var normal_style = end_turn_button.get_theme_stylebox("normal")
+	end_turn_button.add_theme_stylebox_override("hover", normal_style)
+	end_turn_button.add_theme_stylebox_override("pressed", normal_style)
+	end_turn_button.add_theme_stylebox_override("focus", normal_style)
+	end_turn_button.add_theme_stylebox_override("disabled", normal_style)
 
-# Calculate slot positions relative to this node
-func calculate_slot_positions():
-	var area2d = $Area2D
+# region: Public Card Management
+
+func can_accept_card() -> bool:
+	return hand_cards.size() < max_hand_size
+
+func add_card_to_hand(card: Node, is_from_deck: bool = true) -> bool:
+	if not can_accept_card():
+		card.queue_free() # Ensure we don't leave orphaned nodes
+		return false
+
+	var color_card = card.get_node("SubViewport/ColorCard")
+	if color_card and color_card.current_color == Color(0,0,0):
+		color_card.generate_random_color()
+
+	add_child(card)
+
+	# Set its starting global position for the animation
+	if is_from_deck:
+		var deck_button = get_node_or_null(deck_button_path)
+		if deck_button:
+			card.global_position = deck_button.global_position + (deck_button.size / 2.0)
+	
+	_connect_card_signals(card)
+	
+	hand_cards.append(card)
+	_reorganize_hand_animated()
+	
+	return true
+
+func remove_card_from_hand(card: Node):
+	if not card in hand_cards:
+		return
+
+	_remove_card_silently(card)
+	
+	var main = get_tree().current_scene
+	if main and main.has_method("is_cursor_over_discard"):
+		if main.is_cursor_over_discard() and chroma_count > 0:
+			chroma_count -= 1
+			update_chroma_counter_text()
+			emit_signal("card_discarded", card.global_position)
+	
+	_reorganize_hand_animated()
+func _remove_card_silently(card: Node):
+	if not card in hand_cards:
+		return
+	hand_cards.erase(card)
+	_disconnect_card_signals(card)
+# endregion
+
+# region: Card Interaction and Fusion
+
+func _on_card_drag_started(card: Node):
+	if is_animating: return
+	dragged_card = card
+
+func _on_card_hover_entered(card: Node):
+	if is_animating: return
+	if dragged_card and card != dragged_card:
+		hover_target_card = card
+
+func _on_card_hover_exited(card: Node):
+	if is_animating: return
+	if card == hover_target_card:
+		hover_target_card = null
+
+func _on_card_drag_ended(_card: Node):
+	if is_animating: return
+
+	# Fusion Logic
+	if dragged_card and hover_target_card and chroma_count > 0:
+		_perform_card_fusion(dragged_card, hover_target_card)
+
+	# Reset dragged card states
+	dragged_card = null
+	hover_target_card = null
+
+func _perform_card_fusion(card1: Node, card2: Node):
+	if not card1 or not card2 or not card1 in hand_cards or not card2 in hand_cards:
+		return
+
+	is_animating = true
+	set_all_cards_interaction(false)
+
+	var color1 = card1.get_node("SubViewport/ColorCard").current_color
+	var color2 = card2.get_node("SubViewport/ColorCard").current_color
+	var fusion_position = card2.position
+	emit_signal("card_fused", card2.global_position)
+	if chroma_count >= 1:
+		chroma_count -= 1
+	update_chroma_counter_text()
+
+	_remove_card_silently(card1)
+	card1.queue_free()
+
+	# Animate the target card (card2) disappearing
+	var disappear_tween = create_tween()
+	disappear_tween.tween_property(card2, "scale", Vector2.ZERO, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	await disappear_tween.finished
+
+	# Clean up the target card after its animation
+	_remove_card_silently(card2)
+	card2.queue_free()
+
+	# Create the new fused card
+	var new_card = card_scene.instantiate()
+	var new_color = _mix_colors_additive(color1, color2)
+	new_card.get_node("SubViewport/ColorCard").set_color(new_color)
+	new_card.position = fusion_position
+	new_card.scale = Vector2.ZERO
+	new_card.modulate = Color(1, 1, 1, 0) # Make it transparent to start
+
+	add_card_to_hand(new_card, false)
+
+	# Update the main UI
+	var main_scene = get_tree().current_scene
+	if main_scene and main_scene.has_method("update_hand_counter"):
+		main_scene.update_hand_counter()
+		main_scene.update_draw_button_state()
+# endregion
+
+# region: Animation and Positioning
+func _reorganize_hand_animated():
+	is_animating = true
+	set_all_cards_interaction(false)
+
+	var master_tween = create_tween()
+	master_tween.set_parallel(true)
+
+	for i in range(hand_cards.size()):
+		var card = hand_cards[i]
+		var target_pos = slot_positions[i]
+
+		master_tween.tween_property(card, "position", target_pos, SLIDE_DURATION)\
+			.set_trans(SLIDE_TRANS)\
+			.set_ease(SLIDE_EASE)\
+			.set_delay(i * 0.04)
+
+		if card.modulate.a < 0.01:
+			master_tween.tween_property(card, "scale", card.base_scale, SLIDE_DURATION)\
+				.set_trans(SLIDE_TRANS)\
+				.set_ease(SLIDE_EASE)
+			master_tween.tween_property(card, "modulate:a", 1.0, SLIDE_DURATION * 0.8)\
+				.set_ease(SLIDE_EASE)
+
+
+	await master_tween.finished
+
+	for card in hand_cards:
+		if is_instance_valid(card):
+			card.original_hand_position = card.position
+			if card.has_method("reset_visuals"):
+				card.reset_visuals()
+
+	is_animating = false
+	set_all_cards_interaction(true)
+
+func _recalculate_slot_positions():
+	slot_positions.clear()
+	var area2d = get_node_or_null("Area2D")
 	var collision_shape = area2d.get_node("CollisionShape2D") if area2d else null
 	var area_offset = Vector2.ZERO
 
 	if collision_shape:
-		area_offset = collision_shape.position 
+		area_offset = collision_shape.position
 
 	# Calculate total width needed for all cards
 	var total_width = (max_hand_size - 1) * card_spacing
@@ -28,127 +207,49 @@ func calculate_slot_positions():
 	for i in range(max_hand_size):
 		var x_pos = start_x + (i * card_spacing)
 		slot_positions.append(Vector2(x_pos, y_pos))
+# endregion
 
-func get_card_hsv(card) -> Vector3:
-	var color_card = card.get_node("SubViewport/ColorCard")
-	var color = color_card.current_color # RGBA
+# region: Color Logic
 
-	return Vector3(color.h, color.s, color.v)
+# Mixes two colors using additive (RGB) model.
+func _mix_colors_additive(color1: Color, color2: Color) -> Color:
+	var new_r = (color1.r + color2.r) / 2.0
+	var new_g = (color1.g + color2.g) / 2.0
+	var new_b = (color1.b + color2.b) / 2.0
+	return Color(new_r, new_g, new_b)
+# endregion
 
-func compare_cards_by_color(card_a, card_b) -> bool:
-	var hsv_a = get_card_hsv(card_a)
-	var hsv_b = get_card_hsv(card_b)
+# region: Helpers
+func _connect_card_signals(card: Node):
+	card.card_drag_started.connect(_on_card_drag_started)
+	card.card_drag_ended.connect(_on_card_drag_ended)
+	card.card_hover_entered.connect(_on_card_hover_entered)
+	card.card_hover_exited.connect(_on_card_hover_exited)
+	if card.has_method("set_parent_hand"):
+		card.set_parent_hand(self, hand_cards.find(card))
 
-	# Primary sort: Hue (0 to 1 represents 0deg to 360deg)
-	if abs(hsv_a.x - hsv_b.x) > 0.01:
-		return hsv_a.x < hsv_b.x
+func _disconnect_card_signals(card: Node):
+	if card.is_connected("card_drag_started", _on_card_drag_started):
+		card.card_drag_started.disconnect(_on_card_drag_started)
+	if card.is_connected("card_drag_ended", _on_card_drag_ended):
+		card.card_drag_ended.disconnect(_on_card_drag_ended)
+	if card.is_connected("card_hover_entered", _on_card_hover_entered):
+		card.card_hover_entered.disconnect(_on_card_hover_entered)
+	if card.is_connected("card_hover_exited", _on_card_hover_exited):
+		card.card_hover_exited.disconnect(_on_card_hover_exited)
 
-	# Secondary sort: Saturation (higher saturation first)
-	if abs(hsv_a.y - hsv_b.y) > 0.01:
-		return hsv_a.y > hsv_b.y
+	if card.has_method("clear_parent_hand"):
+		card.clear_parent_hand()
 
-	# Tertiary sort: Value/Brightness (higher value first)
-	return hsv_a.z > hsv_b.z
+func set_all_cards_interaction(enabled: bool):
+	for card in hand_cards:
+		if is_instance_valid(card):
+			card.is_hoverable = enabled
 
-# Find index where a new card should be inserted in the hand
-func get_insertion_index(new_card) -> int:
-	var new_hsv = get_card_hsv(new_card)
+func update_chroma_counter_text():
+	chroma_count_text.text = "●".repeat(chroma_count) + " " + str(chroma_count)
 
-	for i in range(hand_cards.size()):
-		var existing_hsv = get_card_hsv(hand_cards[i])
-
-		if compare_cards_by_color(new_card, hand_cards[i]):
-			# New card should go before card at index i
-			return i
-			
-	# New card that have higher hue, lower sat, or lower val should go at end
-	return hand_cards.size()  # Insert at end if it belongs after all existing cards
-
-func can_accept_card() -> bool:
-	return hand_cards.size() < max_hand_size
-
-# Run after insertion/removal
-func update_all_card_slot_indices():
-	for i in range(hand_cards.size()):
-		hand_cards[i].hand_slot_index = i
-
-func add_card_to_hand(card) -> bool:
-	if !can_accept_card():
-		return false
-
-	# Safety check to ensure the card has color
-	var color_card = card.get_node("SubViewport/ColorCard")
-	if color_card and color_card.current_color == Color(0,0,0):
-		color_card.generate_random_color()
-
-	var insert_index = get_insertion_index(card)
-	hand_cards.insert(insert_index, card) # How nice of GDScript to have insert method :D
-
-	# Parent the card to the hand
-	if card.get_parent():
-		card.get_parent().remove_child(card)
-
-	add_child(card)
-	card.set_parent_hand(self, insert_index) # Set up card's hand reference
-	update_all_card_slot_indices()
-	animate_card_insertion(card, insert_index) 	# Animate card to its position
-	return true
-
-func remove_card_from_hand(card):
-	var index = hand_cards.find(card)
-	if index == -1: #Card is not in array
-		return
-
-	card.clear_parent_hand()
-	hand_cards.remove_at(index)
-	update_all_card_slot_indices()
-	animate_cards_shift_left(index)
-
-	if card.get_parent() == self:
-		remove_child(card)
-
-# Animation Helpers
-func animate_card_insertion(new_card, insert_index: int):
-	# Set card's initial position; For now, start from center and animate to slot
-	new_card.position = Vector2.ZERO
-	var card_tween = create_tween()
-	card_tween.tween_property(new_card, "position", slot_positions[insert_index], 0.2)
-	card_tween.set_trans(Tween.TRANS_BACK)
-	card_tween.set_ease(Tween.EASE_OUT)
-	
-	# Update the card's hand position reference
-	card_tween.finished.connect(func(): new_card.original_hand_position = new_card.position)
-	
-	# Animate all cards that need to shift right  (All cards right of removed card)
-	for i in range(insert_index + 1, hand_cards.size()):
-		var card = hand_cards[i]
-		var shift_tween = create_tween()
-		shift_tween.tween_property(card, "position", slot_positions[i], 0.2)
-		shift_tween.set_trans(Tween.TRANS_BACK)
-		shift_tween.set_ease(Tween.EASE_OUT)
-		shift_tween.finished.connect(func(): card.original_hand_position = card.position)
-
-# Animate cards shifting left to fill a gap
-func animate_cards_shift_left(removed_index: int):
-	# Animate all cards after the removed index to shift left
-	for i in range(removed_index, hand_cards.size()):
-		var card = hand_cards[i]
-		var shift_tween = create_tween()
-		shift_tween.tween_property(card, "position", slot_positions[i], 0.2)
-		shift_tween.set_trans(Tween.TRANS_BACK)
-		shift_tween.set_ease(Tween.EASE_OUT)
-
-# Get the world position for a specific slot index
-func get_slot_world_position(index: int) -> Vector2:
-	if index >= 0 and index < slot_positions.size():
-		return global_position + slot_positions[index]
-	return global_position
-
-# Check if a position is within the hand's valid area
-func is_position_in_hand(world_pos: Vector2) -> bool:
-	var hand_area = $Area2D
-	if not hand_area:
-		return false
-	
-	var distance = world_pos.distance_to(global_position)
-	return distance < 400
+func reset_chroma_counter():
+	chroma_count = 3
+	update_chroma_counter_text()
+# endregion

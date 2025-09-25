@@ -1,0 +1,27 @@
+[gd_scene load_steps=3 format=3 uid="uid://by0ctvblmo7ot"]
+
+[ext_resource type="Script" uid="uid://d2haregwm31mp" path="res://scripts/fuseParticle.gd" id="1_l50ia"]
+
+[sub_resource type="Curve" id="Curve_legyg"]
+_data = [Vector2(0, 1), 0.0, -1.97753, 0, 0, Vector2(1, 0.134832), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[node name="Destroy" type="Node2D"]
+script = ExtResource("1_l50ia")
+
+[node name="CPUParticles2D" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 60
+lifetime = 0.37
+one_shot = true
+explosiveness = 1.0
+spread = 180.0
+gravity = Vector2(0, 33.67)
+initial_velocity_min = 917.05
+initial_velocity_max = 1000.0
+linear_accel_min = 3.55
+linear_accel_max = 22.49
+scale_amount_min = 31.29
+scale_amount_max = 41.39
+scale_amount_curve = SubResource("Curve_legyg")
+color = Color(0.92549, 0.184314, 0.313726, 1)

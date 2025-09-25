@@ -1,6 +1,12 @@
 extends Sprite2D
 
 @export var sub_viewport: SubViewport
+@export var card_scene: PackedScene
+
+signal card_drag_started(card)
+signal card_drag_ended(card)
+signal card_hover_entered(card)
+signal card_hover_exited(card)
 
 # Tweens 
 var hover_tween: Tween
@@ -16,11 +22,12 @@ var last_click_time: float = 0.0
 # State Variables
 var is_dragging: bool = false 
 var is_animating: bool = false
+var is_hoverable: bool = true
 
 var drag_offset: Vector2
 var lift_offset_vector: Vector2 = Vector2.ZERO
-var base_scale: Vector2 = Vector2(0.75, 0.75)
-var hover_scale: Vector2 = Vector2(0.8, 0.8)
+var base_scale: Vector2 = Vector2(0.65, 0.65)
+var hover_scale: Vector2 = Vector2(0.75, 0.75)
 
 # Hand Integration
 var parent_hand = null  # Reference to PlayerHand if this card is in a hand
@@ -42,7 +49,7 @@ func _process(delta: float):
 
 	if is_dragging:
 		var lift_offset = Vector2.ZERO if is_animating else lift_offset_vector
-		global_position = get_global_mouse_position() - drag_offset - lift_offset
+		global_position = get_global_mouse_position() - drag_offset
 		_set_card_rotation(delta)
 
 	else:
@@ -50,13 +57,15 @@ func _process(delta: float):
 
 @warning_ignore("unused_parameter")
 func _on_input_event(viewport: Node, event: InputEvent, shape_idx: int):
-	if event.is_action_pressed("click") and GlobalState.node_being_dragged == null:
+	# Only allow clicking if the card is hoverable and no other card is being dragged
+	if event.is_action_pressed("click") and is_hoverable and GlobalState.node_being_dragged == null:
 		var current_time = Time.get_ticks_msec() / 1000.0
 		
 		if current_time - last_click_time >= click_cooldown_time:
 			last_click_time = current_time
 			start_drag()
 
+# Letting go of drag
 func _unhandled_input(event: InputEvent):
 	if event.is_action_released("click") and is_dragging:
 		stop_drag()
@@ -64,13 +73,15 @@ func _unhandled_input(event: InputEvent):
 func start_drag():
 	is_animating = false
 	is_dragging = true 
-
+	is_hoverable = false
 	GlobalState.node_being_dragged = self
 	original_hand_position = position
 
 	drag_offset = get_global_mouse_position() - global_position
 	z_index = 20 
 	animate_shadow(true)
+	animate_hover_effect(true)
+	emit_signal("card_drag_started", self)
 
 	# Kill any previous animation
 	if lift_tween and lift_tween.is_running():
@@ -86,21 +97,28 @@ func start_drag():
 func stop_drag():
 	is_animating = true
 	is_dragging = false
+	is_hoverable = true
+	animate_hover_effect(false)
 	GlobalState.node_being_dragged = null
 	z_index = 7
-
-	# Return to hand or stay where dropped in drop slot
+	
+	# Emit drag ended signal BEFORE handling drop logic
+	emit_signal("card_drag_ended", self)
+	
+	# Check if card is over discard area
+	var main_scene = get_tree().current_scene
+	if main_scene and main_scene.has_method("handle_potential_discard"):
+		if main_scene.handle_potential_discard(self):
+			return
+	
+	# Return to hand or stay where dropped
 	handle_drop_logic()
 
-# Handle what happens when a card is dropped
 func handle_drop_logic():
 	var target_position = original_hand_position  # Default: return to hand
-
 	if is_card_in_hand_area():
-		# Card is still in the hand area, keep it in the hand
 		target_position = original_hand_position
 	else:
-		# Card is outside valid areas, return it to the hand
 		target_position = original_hand_position
 	
 	animate_return_to_position(target_position)
@@ -118,6 +136,18 @@ func is_card_in_hand_area() -> bool:
 	var distance_to_hand = global_position.distance_to(parent_hand.global_position)
 	return distance_to_hand < 400  # Adjust this threshold as needed
 
+# ======================== Helpers to set up hand indexes ============================
+# Set the parent hand reference (called by PlayerHand when card is added)
+func set_parent_hand(hand_node, slot_index: int):
+	parent_hand = hand_node
+	hand_slot_index = slot_index
+
+# Clear the parent hand reference (called when card leaves hand)
+func clear_parent_hand():
+	parent_hand = null
+	hand_slot_index = -1
+
+# ======================= Animation Helper functions ==========================
 # Animate the card returning to its position
 func animate_return_to_position(target_pos: Vector2):
 	# Stop any other animations
@@ -147,15 +177,14 @@ func animate_return_to_position(target_pos: Vector2):
 func _on_drop_animation_finished():
 	is_animating = false
 
-# Set the parent hand reference (called by PlayerHand when card is added)
-func set_parent_hand(hand_node, slot_index: int):
-	parent_hand = hand_node
-	hand_slot_index = slot_index
+func reset_visuals():
+	is_animating = false
+	scale = base_scale
+	rotation_degrees = 0.0
+	lift_offset_vector = Vector2.ZERO
+	material.set_shader_parameter("shadow_offset", shadow_offset_hidden)
+	material.set_shader_parameter("hovering", 0.0)
 
-# Clear the parent hand reference (called when card leaves hand)
-func clear_parent_hand():
-	parent_hand = null
-	hand_slot_index = -1
 
 func animate_hover_effect(is_hovering: bool):
 	if hover_tween and hover_tween.is_running():
@@ -198,8 +227,17 @@ func _set_card_rotation(delta: float) -> void:
 	self.rotation_degrees = lerp(self.rotation_degrees, rotate_amount, 12.0*delta)
 	last_pos = global_position
 
+# ======================================= Hover Enter and Exit ==========================================
 func _on_mouse_entered():
-	animate_hover_effect(true)
+	# Only emit hover signals if the card is hoverable
+	if is_hoverable:
+		emit_signal("card_hover_entered", self)
+		animate_hover_effect(true)
 
 func _on_mouse_exited():
-	animate_hover_effect(false)
+	# Always emit hover exit signal to clean up any state
+	emit_signal("card_hover_exited", self)
+	if is_hoverable:
+		animate_hover_effect(false)
+
+# =============================== Gameplay Helper Functions =========================================
